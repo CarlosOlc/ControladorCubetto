@@ -22,8 +22,9 @@ int Esquerda = 49;
 int Re = 52;
 int Start = 53;
 
-int fun;
-String comandos;
+int i = 0;
+int fun = 0;
+int comandos[12];
 
 byte speed = 255;
 
@@ -45,140 +46,83 @@ void loop() {
   MFRC522::MIFARE_Key key;
   for (byte i = 0; i < 6; i++) key.keyByte[i] = 0xFF;
 
-  //some variables we need
-  byte block;
-  byte len;
   MFRC522::StatusCode status;
+
+  //  Se detectar rfid
   if (mfrc522.PICC_IsNewCardPresent()) {
     if (mfrc522.PICC_ReadCardSerial()) {
       Serial.println(F("**Card Detected:**"));
-      //-------------------------------------------
 
-      //  mfrc522.PICC_DumpDetailsToSerial(&(mfrc522.uid)); //dump some details about the card
+      naoMove();
 
-      //mfrc522.PICC_DumpToSerial(&(mfrc522.uid));      //uncomment this to see all blocks in hex
-
-      //-------------------------------------------
-
-      Serial.print(F("Name: "));
-
-      byte buffer1[18];
-
-      block = 4;
-      len = 18;
-
-      //------------------------------------------- GET FIRST NAME
-      status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, 4, &key, &(mfrc522.uid)); //line 834 of MFRC522.cpp file
-      if (status != MFRC522::STATUS_OK) {
-        Serial.print(F("Authentication failed: "));
-        Serial.println(mfrc522.GetStatusCodeName(status));
-        return;
-      }
-
-      status = mfrc522.MIFARE_Read(block, buffer1, &len);
-      if (status != MFRC522::STATUS_OK) {
-        Serial.print(F("Reading failed: "));
-        Serial.println(mfrc522.GetStatusCodeName(status));
-        return;
-      }
-
-      //PRINT FIRST NAME
-      for (uint8_t i = 0; i < 16; i++)
-      {
-        if (buffer1[i] != 32)
-        {
-          Serial.write(buffer1[i]);
-        }
-      }
-      Serial.print(" ");
-
-      //---------------------------------------- GET LAST NAME
-
-      byte buffer2[18];
-      block = 1;
-
-      status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, 1, &key, &(mfrc522.uid)); //line 834
-      if (status != MFRC522::STATUS_OK) {
-        Serial.print(F("Authentication failed: "));
-        Serial.println(mfrc522.GetStatusCodeName(status));
-        return;
-      }
-
-      status = mfrc522.MIFARE_Read(block, buffer2, &len);
-      if (status != MFRC522::STATUS_OK) {
-        Serial.print(F("Reading failed: "));
-        Serial.println(mfrc522.GetStatusCodeName(status));
-        return;
-      }
-
-      //PRINT LAST NAME
-      for (uint8_t i = 0; i < 16; i++) {
-        Serial.write(buffer2[i] );
-      }
-
-
-      //----------------------------------------
-
-      Serial.println(F("\n**End Reading**\n"));
-
-      delay(1000); //change value if you want to read cards faster
-
+      delay(3000); //change value if you want to read cards faster
       mfrc522.PICC_HaltA();
       mfrc522.PCD_StopCrypto1();
     }
   }
 
   while (blu.available()) {
-    comandos = "";
-    fun = -1;
+    fun = 0;
+
     while (fun != Start) {
       fun = blu.read();
-      salvaCom();
-      //      Serial.println(fun);
+      if (fun > 0) {
+        comandos[i] = fun;
+        i++;
+      }
+
     }
-    Serial.println(comandos);
+    i = 0;
+
   }
 
-int incomandos = 0;
-int i = 0;
-String a;
-while(incomandos != Start){
-  Serial.println(comandos);
-  a = comandos[i];
-  incomandos = a.toInt();
-  if (incomandos != 0)
-  Serial.println(a);
-//  Serial.println(incomandos);
-  i++;
-}
+  if (fun == Start) {
 
-  if (fun == Frente) {
-    moverFrente();
-    Serial.println("Frente");
+    int incom;
+    while (comandos[i] != Start) {
+      incom = comandos[i];
+      if (incom == Frente) {
+        Serial.println("Frente");
+        while (!mfrc522.PICC_IsNewCardPresent()) {
+          
+//            Serial.println(F("**Card Detected:**"));
+            moverFrente();
+          
+        }
+        blu.println(F("**Card Detected:**"));
+
+        naoMove();
+        delay(2000);
+
+      }
+
+      if (incom == Esquerda) {
+        moverEsquerda();
+        Serial.println("Esquerda");
+        delay(500);
+      }
+
+      if (incom == Direita) {
+        moverDireita();
+        Serial.println("Direita");
+        delay(500);
+      }
+
+      if (incom == Re) {
+        moverRe();
+        Serial.println("Re");
+        delay(500);
+      }
+
+
+      i++;
+    }
+    i = 0;
     fun = 0;
-    delay(1000);
   }
 
-  if (fun == Esquerda) {
-    moverEsquerda();
-    Serial.println("Esquerda");
-    fun = 0;
-    delay(1000);
-  }
 
-  if (fun == Direita) {
-    moverDireita();
-    Serial.println("Direita");
-    fun = 0;
-    delay(1000);
-  }
 
-  if (fun == Re) {
-    moverRe();
-    Serial.println("Re");
-    fun = 0;
-    delay(1000);
-  }
 
   if (fun == 0) {
     naoMove();
@@ -190,32 +134,29 @@ while(incomandos != Start){
 
 
 }
-void salvaCom() {
-  if (fun > 0)
-    comandos += fun;
-}
 
-void moverFrente() {
+
+void moverRe() {
   analogWrite(AIA, 0);
   analogWrite(AIB, speed);
   analogWrite(BIA, 0);
   analogWrite(BIB, speed);
 
 }
-void moverRe() {
+void moverFrente() {
   analogWrite(AIA, speed);
   analogWrite(AIB, 0);
   analogWrite(BIA, speed);
   analogWrite(BIB, 0);
 }
-void moverDireita() {
+void moverEsquerda() {
   analogWrite(AIA, speed);
   analogWrite(AIB, 0);
   analogWrite(BIA, 0);
   analogWrite(BIB, speed);
 
 }
-void moverEsquerda() {
+void moverDireita() {
 
   analogWrite(AIA, 0);
   analogWrite(AIB, speed);
